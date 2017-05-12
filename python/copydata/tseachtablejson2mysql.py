@@ -38,10 +38,11 @@ try:
     for index in range(len(json_obj)):
         vallist.append(json_obj[index]["ts_id"])
     #print(vallist)
+    vallist.sort()
 
     urldict = {}
     for tsid in vallist:
-        urldict[tsid] = "http://aklc.hydrotel.co.nz:8080/KiWIS/KiWIS?service=kisters&type=queryServices&request=getTimeseriesValues&datasource=1&format=json&ts_id="+tsid+"&period=P1Y"
+        urldict[tsid] = "http://aklc.hydrotel.co.nz:8080/KiWIS/KiWIS?service=kisters&type=queryServices&request=getTimeseriesValues&datasource=1&format=json&ts_id="+tsid+"&period=complete"
     #print(urldict)
 
     for (k,v) in urldict.items():
@@ -49,17 +50,26 @@ try:
         ts_json_obj = json.loads(ts_resp.decode('utf-8'))
 
         tablename = "tsid"+k+"tbl"
-        print("CREATE TABLE IF NOT EXISTS "  + tablename + "(TSTimestamp DATE, TSValue TEXT)")
-        #cursor.execute("CREATE TABLE IF NOT EXISTS"  + tablename + "(TSTimestamp DATE, TSValue TEXT)")
+        print("CREATE TABLE IF NOT EXISTS "  + tablename + "(TSTimestamp varchar(255), TSValue varchar(255))")
+        cursor.execute("CREATE TABLE IF NOT EXISTS "  + tablename + "(TSTimestamp varchar(255), TSValue varchar(255))")
         con.commit()
 
-        print(ts_json_obj["data"])
-        #for eachts in ts_json_obj:
-        #    print('INSERT INTO ' + tablename + '(TSTimestamp, TSValue) VALUES('+eachts["timestamp"] + "," + eachts["Values"] + ')')
-            #cursor.execute('INSERT INTO ' + tablename + '(TSTimestamp, TSValue) VALUES('+eachts["timestamp"] + "," + eachts["Values"] + ')')
 
+        objlist = ts_json_obj[0]['data']
+        i = 0
+        for eachts in objlist:
+            #print(eachts[0])
+            tsp = eachts[0]
+            va = '{}'.format(eachts[1])
+            if va is None:
+                va = 'NULL'
+            #print('INSERT INTO ' + tablename + ' (TSTimestamp, TSValue) VALUES("' + tsp +'","' + va + '")')
+            cursor.execute('INSERT INTO ' + tablename + ' (TSTimestamp, TSValue) VALUES("' + tsp +'","' + va + '")')
+            i = i+1
+            if (i%5000 == 0):
+                con.commit()
         con.commit()
-        break
+        #break
 
     print("finished db insert")
     con.commit()
